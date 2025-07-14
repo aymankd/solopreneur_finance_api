@@ -12,6 +12,7 @@ export class CompanyCalculator {
     private readonly monthlyIncome: number,
     private readonly ownerAsEmployee: Employee,
     private readonly taxYear: string,
+    private readonly employees: Employee[] = [],
   ) {}
 
   addNonTaxableExpense(expense: number): void {
@@ -26,18 +27,24 @@ export class CompanyCalculator {
   }
 
   // Ir + CNSS
-  getEmployeeMonthlyTaxes(): number {
-    const cnss = CnssCalculators.getTotalCnss(this.ownerAsEmployee.grossSalary);
-    const ir = IrCalculator.getTotalIr(this.ownerAsEmployee.grossSalary);
+  getEmployeeMonthlyTaxes(employee = this.ownerAsEmployee): number {
+    const cnss = CnssCalculators.getTotalCnss(employee.grossSalary);
+    const ir = IrCalculator.getTotalIr(employee.grossSalary);
     return cnss + ir;
   }
 
-  getEmployeeMonthlyNetSalaryWithBonus(): number {
-    const netSalary = SalaryCalculator.getNetSalary(this.ownerAsEmployee);
-    return netSalary + this.ownerAsEmployee.nonTaxableBonus;
+  getEmployeeMonthlyNetSalaryWithBonus(
+    employee = this.ownerAsEmployee,
+  ): number {
+    const netSalary = this.getEmployeeMonthlyNetSalary(employee);
+    return netSalary + employee.nonTaxableBonus;
   }
 
-  getYearlyEmployeeTotalExpenses(): number {
+  getEmployeeMonthlyNetSalary(employee = this.ownerAsEmployee): number {
+    return SalaryCalculator.getNetSalary(employee);
+  }
+
+  getYearlyEmployeeTotalExpensesWithSalary(): number {
     const monthlyNetSalaryWithBonus =
       this.getEmployeeMonthlyNetSalaryWithBonus();
     const monthlyTaxes = this.getEmployeeMonthlyTaxes();
@@ -52,8 +59,15 @@ export class CompanyCalculator {
 
   getYearlyProfit(): number {
     const yearlyIncome = this.getYearlyIncome();
-    const yearlyExpenses = this.getYearlyEmployeeTotalExpenses();
-    return yearlyIncome - yearlyExpenses;
+    const yearlyOwnerEmployeeExpenses =
+      this.getYearlyEmployeeTotalExpensesWithSalary();
+    const yearlyEmployeesExpenses =
+      this.getYearlyEmployeesTaxExpensesWithSalaries();
+    // console.log(
+    //   `${yearlyIncome} - ${yearlyOwnerEmployeeExpenses} - ${yearlyEmployeesExpenses}`,
+    // );
+
+    return yearlyIncome - yearlyOwnerEmployeeExpenses - yearlyEmployeesExpenses;
   }
 
   getCompanyTaxes(): number {
@@ -67,17 +81,38 @@ export class CompanyCalculator {
     return IS + ID;
   }
 
-  getCombinedProfitAfterTaxes(): number {
+  getCompanyMonthlyEmployeesTaxExpenses(): number {
+    return this.employees.reduce((total, employee) => {
+      return total + this.getEmployeeMonthlyTaxes(employee);
+    }, 0);
+  }
+
+  getEmployeesSalaryExpensesWithBonus(): number {
+    return this.employees.reduce((total, employee) => {
+      return total + SalaryCalculator.getNetWithBonusSalary(employee);
+    }, 0);
+  }
+
+  getMonthlyEmployeesTaxExpensesWithSalaries(): number {
+    return (
+      this.getCompanyMonthlyEmployeesTaxExpenses() +
+      this.getEmployeesSalaryExpensesWithBonus()
+    );
+  }
+
+  getYearlyEmployeesTaxExpensesWithSalaries(): number {
+    return this.getMonthlyEmployeesTaxExpensesWithSalaries() * 12;
+  }
+
+  getNetProfitAfterTaxes(): number {
     const yearlyProfit = this.getYearlyProfit();
     const companyTaxes = this.getCompanyTaxes();
-    const employeeYearlyNetIncomeWithBonus =
-      this.getEmployeeMonthlyNetSalaryWithBonus() * 12;
-    return yearlyProfit + employeeYearlyNetIncomeWithBonus - companyTaxes;
+    return yearlyProfit - companyTaxes;
   }
 
   getMarginalProfitRate(): number {
     const totalincome = this.getYearlyIncome();
-    const combinedProfit = this.getCombinedProfitAfterTaxes();
-    return Math.round((combinedProfit / totalincome) * 1000000000) / 10000000;
+    const netProfit = this.getNetProfitAfterTaxes();
+    return Math.round((netProfit / totalincome) * 1000000000) / 10000000;
   }
 }

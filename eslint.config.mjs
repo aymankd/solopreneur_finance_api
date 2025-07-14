@@ -47,8 +47,6 @@ export default tseslint.config(
       'simple-import-sort/imports': 'error',
       'simple-import-sort/exports': 'error',
       'unicorn/prevent-abbreviations': 'error',
-      'unicorn/no-array-reduce': 'warn',
-      'unicorn/no-array-for-each': 'warn',
     },
   },
 );
